@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактировать заявку</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Редактировать заявку</h1>
+
+    <form method="POST">
+        <label>Имя:<br>
+            <input type="text" name="name" value="{{ data[1] }}" required>
+        </label><br><br>
+
+        <label>Телефон:<br>
+            <input type="text" name="phone" value="{{ data[2] }}" required>
+        </label><br><br>
+
+        <label>Автомобиль:<br>
+            <input type="text" name="car" value="{{ data[3] }}" required>
+        </label><br><br>
+
+        <label>Проблема:<br>
+            <input type="text" name="problem" value="{{ data[4] }}">
+        </label><br><br>
+
+        <label>Дата и время:<br>
+            <input type="text" name="datetime" value="{{ data[5] }}">
+        </label><br><br>
+
+        <button type="submit">💾 Сохранить</button>
+        <a href="{{ url_for('index') }}">⬅️ Назад</a>
+    </form>
+</body>
+</html>

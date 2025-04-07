@@ -1,0 +1,150 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.4s, color 0.4s;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+th, td {
+    padding: 12px;
+    border: 1px solid #ccc;
+    text-align: left;
+}
+
+th {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+}
+
+tr:nth-child(even) {
+    background-color: var(--row-even);
+}
+
+tr:hover {
+    background-color: var(--row-hover);
+}
+
+a.delete, a.edit {
+    text-decoration: none;
+    font-size: 20px;
+    margin: 0 5px;
+    transition: transform 0.2s ease-in-out;
+}
+
+a.delete:hover, a.edit:hover {
+    transform: scale(1.3);
+}
+
+form {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+input[type="text"], input[type="password"] {
+    padding: 8px;
+    font-size: 16px;
+    width: 300px;
+}
+
+button {
+    padding: 8px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.theme-toggle {
+    float: right;
+    margin-top: -60px;
+    background: #444;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 5px;
+}
+
+.theme-toggle:hover {
+    background: #222;
+}
+
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.login-form {
+    background-color: #f9f9f9;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 300px;
+}
+
+.login-form h2 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.login-form input {
+    padding: 10px;
+    font-size: 16px;
+}
+
+.login-form .error {
+    color: red;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Светлая тема по умолчанию */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #000000;
+    --header-bg: #f2f2f2;
+    --header-text: #000000;
+    --row-even: #f9f9f9;
+    --row-hover: #ececec;
+}
+
+/* Тёмная тема */
+body.dark {
+    --bg-color: #121212;
+    --text-color: #f1f1f1;
+    --header-bg: #1e1e1e;
+    --header-text: #f1f1f1;
+    --row-even: #1a1a1a;
+    --row-hover: #2a2a2a;
+}
+
+/* Анимация */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

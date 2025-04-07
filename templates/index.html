@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Заявки на автосервис</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Заявки</h1>
+
+    <div class="top-bar">
+        <input type="text" id="search" placeholder="Поиск по имени или телефону...">
+        <button id="toggle-theme">🌙</button>
+        <a href="{{ url_for('logout') }}" class="logout">🚪 Выйти</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Имя</th>
+                <th>Телефон</th>
+                <th>Автомобиль</th>
+                <th>Проблема</th>
+                <th>Дата</th>
+                <th>Создано</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody id="request-table">
+            {% for request in requests %}
+            <tr id="row-{{ request[0] }}" class="fade-in">
+                <td>{{ request[1] }}</td>
+                <td>{{ request[2] }}</td>
+                <td>{{ request[3] }}</td>
+                <td>{{ request[4] }}</td>
+                <td>{{ request[5] }}</td>
+                <td>{{ request[6] }}</td>
+                <td>
+                    <a href="/edit/{{ request[0] }}" class="edit">✏️</a>
+                    <a href="/delete/{{ request[0] }}" class="delete">❌</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+<script>
+    const searchInput = document.getElementById("search");
+    searchInput.addEventListener("input", () => {
+        const filter = searchInput.value.toLowerCase();
+        document.querySelectorAll("#request-table tr").forEach(row => {
+            const name = row.children[0].innerText.toLowerCase();
+            const phone = row.children[1].innerText.toLowerCase();
+            row.style.display = name.includes(filter) || phone.includes(filter) ? "" : "none";
+        });
+    });
+
+    const toggleBtn = document.getElementById("toggle-theme");
+    toggleBtn.onclick = () => {
+        document.body.classList.toggle("dark");
+        localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+    };
+    if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark");
+    }
+</script>
+
+</body>
+</html>
