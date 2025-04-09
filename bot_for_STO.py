@@ -1,25 +1,26 @@
 import logging
 import psycopg2
-from telegram import Update, ReplyKeyboardMarkup
+from datetime import datetime, timedelta, date
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, filters,
-    ContextTypes, ConversationHandler
+    ContextTypes, ConversationHandler, CallbackQueryHandler
 )
 
 # =============== НАСТРОЙКИ ===============
-TOKEN = "ВАШ ТОКЕН"
+TOKEN = "ВАШ ТОКЕН" 
 
 DB_CONFIG = {
     "host": "localhost",
-    "user": "postgres",
+    "user": "postgres", # НАЗВАНИЕ БД КОТОРУЮ ИСПОЛЬЗУЕТЕ
     "password": "ВАШ ПАРОЛЬ",
-    "dbname": "sto_bot"
+    "dbname": "ВАШЕ НАЗВАНИЕ СОЗДАННОГО БД"
 }
 
-ADMIN_CHAT_ID = 0 #НАПИШИТЕ ВАШ CHAD_ID
+ADMIN_CHAT_ID = 0 #АЙДИ АДМИНИСТРАТОРА (НЕ ЮЗЕРНЕЙМ)
 
 # =============== СОСТОЯНИЯ ===============
-NAME, PHONE, CAR, PROBLEM, DATETIME = range(5)
+NAME, PHONE, CAR, PROBLEM, PICK_DATE, PICK_TIME = range(6)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -46,7 +47,7 @@ def save_to_db(data):
             phone TEXT,
             car TEXT,
             problem TEXT,
-            preferred_datetime TEXT,
+            preferred_datetime TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -66,6 +67,40 @@ def save_to_db(data):
     cur.close()
     conn.close()
 
+# =============== ВСПОМОГАТЕЛЬНОЕ ===============
+def get_date_keyboard():
+    today = date.today()
+    buttons = []
+    for i in range(6):
+        d = today + timedelta(days=i)
+        buttons.append([InlineKeyboardButton(d.strftime("%d.%m.%Y"), callback_data=f"date|{d}")])
+    return InlineKeyboardMarkup(buttons)
+
+def get_time_keyboard(selected_date):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT preferred_datetime FROM service_requests
+        WHERE DATE(preferred_datetime) = %s
+    """, (selected_date,))
+    existing = [row[0].strftime("%H:%M") for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+
+    times = [f"{hour:02d}:00" for hour in range(9, 18)]
+    buttons = []
+    row = []
+    for t in times:
+        if t not in existing:
+            row.append(InlineKeyboardButton(t, callback_data=f"time|{t}"))
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("🔙 Назад к дате", callback_data="back_to_date")])
+    return InlineKeyboardMarkup(buttons)
+
 # =============== ХЕНДЛЕРЫ ===============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -83,7 +118,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "🔙 В главное меню":
         await back_to_main(update, context)
 
-# =============== ШАГИ ЗАПИСИ ===============
+# =============== ЗАПИСЬ КЛИЕНТА ===============
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Как вас зовут?", reply_markup=back_to_menu_keyboard)
     return NAME
@@ -113,30 +148,43 @@ async def get_problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text == "🔙 В главное меню":
         return await back_to_main(update, context)
     context.user_data["problem"] = update.message.text
-    await update.message.reply_text("Когда удобно приехать? (например: 10 апреля, 14:30):")
-    return DATETIME
+    await update.message.reply_text("Выберите удобную дату:", reply_markup=get_date_keyboard())
+    return PICK_DATE
 
-async def get_datetime(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text == "🔙 В главное меню":
-        return await back_to_main(update, context)
-    context.user_data["datetime"] = update.message.text
-    context.user_data["user_id"] = update.message.from_user.id
+async def pick_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    _, date_str = query.data.split("|")
+    context.user_data["selected_date"] = date_str
+    await query.message.edit_text("Выберите удобное время:", reply_markup=get_time_keyboard(date_str))
+    return PICK_TIME
+
+async def pick_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.data == "back_to_date":
+        await query.message.edit_text("Выберите удобную дату:", reply_markup=get_date_keyboard())
+        return PICK_DATE
+    _, time_str = query.data.split("|")
+    selected_date = context.user_data["selected_date"]
+    full_datetime = datetime.strptime(f"{selected_date} {time_str}", "%Y-%m-%d %H:%M")
+
+    context.user_data["datetime"] = full_datetime
+    context.user_data["user_id"] = query.from_user.id
 
     save_to_db(context.user_data)
 
-    # Отправка админу
     message = (
         "📬 Новая заявка на СТО:\n"
         f"👤 Имя: {context.user_data['name']}\n"
         f"📞 Телефон: {context.user_data['phone']}\n"
         f"🚗 Авто: {context.user_data['car']}\n"
         f"🔧 Проблема: {context.user_data['problem']}\n"
-        f"📅 Время: {context.user_data['datetime']}"
+        f"📅 Время: {full_datetime.strftime('%d.%m.%Y, %H:%M')}"
     )
     await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=message)
 
-    await update.message.reply_text("✅ Ваша заявка принята! Мы свяжемся с вами в ближайшее время.",
-                                    reply_markup=main_menu_keyboard)
+    await query.message.edit_text("✅ Ваша заявка принята! Мы свяжемся с вами в ближайшее время.")
     return ConversationHandler.END
 
 # =============== СБРОС ===============
@@ -163,7 +211,8 @@ def main():
             PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
             CAR: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_car)],
             PROBLEM: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_problem)],
-            DATETIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_datetime)],
+            PICK_DATE: [CallbackQueryHandler(pick_date, pattern="^date|.*")],
+            PICK_TIME: [CallbackQueryHandler(pick_time, pattern="^(time|back_to_date).*")]
         },
         fallbacks=[
             MessageHandler(filters.Regex("^🔙 В главное меню$"), back_to_main),
